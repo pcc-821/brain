@@ -1,5 +1,5 @@
 """
-Dataset handling and preprocessing for MNIST
+MNIST数据集处理和预处理
 """
 
 import numpy as np
@@ -10,22 +10,22 @@ from sklearn.preprocessing import StandardScaler
 
 def load_mnist_sklearn():
     """
-    Load MNIST dataset using sklearn (8x8 digits)
+    使用sklearn加载MNIST数据集（8x8数字）
     
-    Returns:
+    返回值:
     --------
     tuple
         (X_train, y_train, X_test, y_test)
     """
-    # Load digits dataset (8x8 images of digits 0-9)
+    # 加载数字数据集（0-9的8x8图像）
     digits = load_digits()
     X = digits.data
     y = digits.target
     
-    # Normalize to [0, 1]
+    # 归一化到[0, 1]
     X = X / 16.0
     
-    # Split into train/test
+    # 分割为训练集/测试集
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -35,61 +35,61 @@ def load_mnist_sklearn():
 
 def load_mnist_full():
     """
-    Load full MNIST dataset (28x28 images)
-    Downloads from the internet if not available locally
+    加载完整的MNIST数据集（28x28图像）
+    如果本地不可用，则从互联网下载
     
-    Returns:
+    返回值:
     --------
     tuple
         (X_train, y_train, X_test, y_test)
     """
     try:
         from tensorflow import keras
-        # Load full MNIST dataset
+        # 加载完整的MNIST数据集
         (X_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()
         
-        # Flatten and normalize
+        # 展平并归一化
         X_train = X_train.reshape(-1, 28*28) / 255.0
         X_test = X_test.reshape(-1, 28*28) / 255.0
         
         return X_train, y_train, X_test, y_test
     
     except ImportError:
-        print("TensorFlow not available. Using sklearn digits dataset instead.")
+        print("TensorFlow不可用。使用sklearn数字数据集代替。")
         return load_mnist_sklearn()
 
 
 def convert_to_spike_train(image, threshold=0.5, duration=100, dt=1.0):
     """
-    Convert image to spike train using threshold
+    使用阈值方法将图像转换为脉冲列车
     
-    Parameters:
+    参数:
     -----------
     image : array
-        Input image (flattened)
+        输入图像（展平）
     threshold : float
-        Threshold for spiking
+        脉冲发放的阈值
     duration : int
-        Duration of spike train in time steps
+        脉冲列车的持续时间（时间步数）
     dt : float
-        Time step in ms
+        时间步长（毫秒）
         
-    Returns:
+    返回值:
     --------
     array
-        Spike train of shape (num_neurons, duration)
+        形状为(神经元数, 时间步数)的脉冲列车
     """
     num_neurons = len(image)
     spike_train = np.zeros((num_neurons, int(duration / dt)))
     
-    # Firing rate proportional to pixel intensity
+    # 发放率与像素强度成正比
     for i, pixel_value in enumerate(image):
         if pixel_value > 0:
-            # Firing rate (Hz)
-            firing_rate = pixel_value * 100  # Max 100 Hz
-            # Number of spikes
+            # 发放率（赫兹）
+            firing_rate = pixel_value * 100  # 最大100赫兹
+            # 脉冲数量
             num_spikes = max(1, int(firing_rate * duration / 1000))
-            # Random spike times
+            # 随机脉冲时间
             spike_times = np.random.choice(
                 int(duration / dt), size=num_spikes, replace=False
             )
@@ -100,32 +100,32 @@ def convert_to_spike_train(image, threshold=0.5, duration=100, dt=1.0):
 
 def convert_to_poisson_spike_train(image, duration=100, dt=1.0):
     """
-    Convert image to Poisson spike train
+    将图像转换为泊松脉冲列车
     
-    Parameters:
+    参数:
     -----------
     image : array
-        Input image (flattened)
+        输入图像（展平）
     duration : int
-        Duration of spike train in time steps
+        脉冲列车的持续时间（时间步数）
     dt : float
-        Time step in ms
+        时间步长（毫秒）
         
-    Returns:
+    返回值:
     --------
     array
-        Spike train of shape (num_neurons, duration)
+        形状为(神经元数, 时间步数)的脉冲列车
     """
     num_neurons = len(image)
     num_steps = int(duration / dt)
     spike_train = np.zeros((num_neurons, num_steps))
     
-    # Generate Poisson spike trains
+    # 生成泊松脉冲列车
     for i, pixel_value in enumerate(image):
         if pixel_value > 0:
-            # Firing rate (Hz)
-            firing_rate = pixel_value * 100  # Max 100 Hz
-            # Probability of spike in each time step
+            # 发放率（赫兹）
+            firing_rate = pixel_value * 100  # 最大100赫兹
+            # 每个时间步的脉冲概率
             spike_prob = firing_rate * dt / 1000
             spike_train[i, :] = np.random.binomial(1, spike_prob, num_steps)
     
@@ -134,20 +134,20 @@ def convert_to_poisson_spike_train(image, duration=100, dt=1.0):
 
 class SpikeDataset:
     """
-    Dataset with spike train conversion
+    带有脉冲列车转换的数据集
     
-    Parameters:
+    参数:
     -----------
     X : array
-        Input data
+        输入数据
     y : array
-        Labels
+        标签
     duration : int
-        Duration of spike train in ms
+        脉冲列车的持续时间（毫秒）
     dt : float
-        Time step in ms
+        时间步长（毫秒）
     spike_encoding : str
-        Encoding method: 'threshold' or 'poisson'
+        编码方法：'threshold'或'poisson'
     """
     
     def __init__(self, X, y, duration=100, dt=1.0, spike_encoding='poisson'):
@@ -162,7 +162,7 @@ class SpikeDataset:
         return len(self.X)
     
     def __getitem__(self, idx):
-        """Get spike train and label for sample"""
+        """获取样本的脉冲列车和标签"""
         image = self.X[idx]
         label = self.y[idx]
         
@@ -171,25 +171,25 @@ class SpikeDataset:
         elif self.spike_encoding == 'poisson':
             spike_train = convert_to_poisson_spike_train(image, duration=self.duration, dt=self.dt)
         else:
-            raise ValueError(f"Unknown spike encoding: {self.spike_encoding}")
+            raise ValueError(f"未知的脉冲编码方法: {self.spike_encoding}")
         
         return spike_train, label
     
     def get_batch(self, indices, precompute=False):
         """
-        Get batch of spike trains
+        获取脉冲列车批次
         
-        Parameters:
+        参数:
         -----------
         indices : array-like
-            Indices to retrieve
+            要检索的索引
         precompute : bool
-            Whether to precompute all spike trains
+            是否预先计算所有脉冲列车
             
-        Returns:
+        返回值:
         --------
         tuple
-            (spike_trains, labels) where spike_trains has shape (batch_size, num_neurons, num_steps)
+            (spike_trains, labels)，其中spike_trains的形状为(批次大小, 神经元数, 时间步数)
         """
         spike_trains = []
         labels = []
@@ -204,19 +204,19 @@ class SpikeDataset:
 
 def preprocess_data(X, normalization='minmax'):
     """
-    Preprocess input data
+    预处理输入数据
     
-    Parameters:
+    参数:
     -----------
     X : array
-        Input data
+        输入数据
     normalization : str
-        Normalization method: 'minmax', 'standard', or 'none'
+        归一化方法：'minmax'、'standard'或'none'
         
-    Returns:
+    返回值:
     --------
     array
-        Preprocessed data
+        预处理后的数据
     """
     if normalization == 'minmax':
         X_min = X.min(axis=0)
@@ -231,6 +231,6 @@ def preprocess_data(X, normalization='minmax'):
         X_processed = X
     
     else:
-        raise ValueError(f"Unknown normalization method: {normalization}")
+        raise ValueError(f"未知的归一化方法: {normalization}")
     
     return X_processed
